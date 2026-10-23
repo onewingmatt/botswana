@@ -1,0 +1,13 @@
+{
+  "name": "botswana-remote-check",
+  "private": true,
+  "scripts": {
+    "typecheck": "cd frontend && ./node_modules/.bin/tsc --noEmit",
+    "deploy:verify": "node scripts/deploy-verify.mjs",
+    "gate": "node scripts/gate.mjs",
+    "gate:strict": "node scripts/gate.mjs --strict"
+  },
+  "gate": {
+    "floor": ["typecheck", "deploy:verify"]
+  }
+}

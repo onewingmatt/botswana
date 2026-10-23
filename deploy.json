@@ -1,0 +1,12 @@
+{
+  "host": "onewing@10.0.0.145",
+  "container": "botswana-app-1",
+  "files": [
+    { "repo": "backend/main.py", "container": "/app/main.py" },
+    { "repo": "backend/game.py", "container": "/app/game.py" },
+    { "repo": "backend/requirements.txt", "container": "/app/requirements.txt" },
+    { "repo": "backend/Dockerfile", "container": "/app/Dockerfile" }
+  ],
+  "url": "https://botswana.onewing.top/",
+  "expectStatus": 200
+}
