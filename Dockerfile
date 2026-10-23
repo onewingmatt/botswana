@@ -3,7 +3,10 @@ FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app
 COPY frontend/package*.json ./
-RUN npm install
+# ci, not install: install may rewrite the lockfile, and this stage's lock is what ships. The lock is
+# committed here (frontend/package-lock.json, copied by the glob above) so ci has something exact to
+# resolve, and it fails loudly if package.json and the lock ever disagree.
+RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
