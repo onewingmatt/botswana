@@ -62,12 +62,19 @@ function connect() {
   };
 }
 
-function handlePlayToken(tokenAnimal: string) {
+function tokensRemaining(): number {
+  if (!state || !state.pool) return 0;
+  return Object.values(state.pool).reduce((sum: number, c: any) => sum + c, 0);
+}
+
+function handlePlayToken(tokenAnimal: string | null) {
   if (!selectedCard) {
     alert("Select a card from your hand first!");
     return;
   }
   
+  // tokenAnimal === null is legal only when no animal figures remain anywhere
+  // (rulebook: the figure is taken "provided an eligible figure remains").
   ws.send(JSON.stringify({
     type: "play",
     payload: {
@@ -448,7 +455,9 @@ function render() {
       ${state.status === "playing" ? `
         <div class="turn-instruction ${isMyTurn ? 'my-turn-instruction' : ''}">
           ${isMyTurn 
-            ? (selectedCard ? "Step 2: Select a token to take from the board above." : "Step 1: Select a card from your hand to play.") 
+            ? (tokensRemaining() === 0
+                ? "No animal figures left — play any card to end the round."
+                : (selectedCard ? "Step 2: Select a token to take from the board above." : "Step 1: Select a card from your hand to play.")) 
             : `Waiting for ${displayName(state.current_player)}...`}
         </div>
       ` : ''}
@@ -521,14 +530,21 @@ function render() {
     el.addEventListener('click', (e) => {
       if (!isMyTurn) return;
       const target = e.currentTarget as HTMLElement;
-      
-      if (selectedCard?.animal === target.getAttribute('data-a') && selectedCard?.value === parseInt(target.getAttribute('data-v')!)) {
+      const animal = target.getAttribute('data-a')!;
+      const value = parseInt(target.getAttribute('data-v')!);
+
+      // No animal figures remain anywhere: the rulebook allows playing a card with no
+      // figure taken, so a click plays the card immediately instead of arming a token pick.
+      if (tokensRemaining() === 0) {
+        selectedCard = { animal, value };
+        handlePlayToken(null);
+        return;
+      }
+
+      if (selectedCard?.animal === animal && selectedCard.value === value) {
         selectedCard = null;
       } else {
-        selectedCard = {
-          animal: target.getAttribute('data-a')!,
-          value: parseInt(target.getAttribute('data-v')!)
-        };
+        selectedCard = { animal, value };
       }
       render(); 
     });

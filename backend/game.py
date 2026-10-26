@@ -74,13 +74,22 @@ class GameState:
             
         self.logs = [f"Round {self.current_round} started!"]
 
-        # Create deck: 6 cards per animal (0-5)
+        # Create deck: 6 cards per animal, numbered 0-5 (5 x 6 = 30 cards)
         self.deck = [(a, v) for a in ANIMALS for v in range(6)]
         random.shuffle(self.deck)
 
-        # Remove cards so deck deals evenly
+        # Rulebook (Wildlife Safari / Botswana, "Setup"): before each round, set aside
+        # face-down cards by player count - 2 players: 2 cards; 3 players: 3 cards;
+        # 4 players: 2 cards; 5 players: none. The rest are dealt evenly.
+        # Previously this was `len(deck) % num_players`, which sets aside 0 cards for both
+        # 2 and 3 players (30 % 2 == 0, 30 % 3 == 0) - see RULES-AUDIT.md D3.
         num_players = len(self.players)
-        cards_to_remove = len(self.deck) % num_players
+        set_aside_by_count = {2: 2, 3: 3, 4: 2, 5: 0}
+        if num_players in set_aside_by_count:
+            cards_to_remove = set_aside_by_count[num_players]
+        else:
+            # No rulebook value exists above 5 players; deal as evenly as possible.
+            cards_to_remove = len(self.deck) % num_players
         for _ in range(cards_to_remove):
             self.deck.pop()
 
@@ -95,7 +104,7 @@ class GameState:
         if not self.players: return ""
         return self.players[self.current_turn_index]
 
-    def play_turn(self, player_id: str, card_animal: str, card_value: int, token_animal: str) -> bool:
+    def play_turn(self, player_id: str, card_animal: str, card_value: int, token_animal: Optional[str]) -> bool:
         if not self.is_playing or self.round_ended or self.game_over:
             return False
         if player_id != self.current_player():
@@ -106,19 +115,30 @@ class GameState:
         if card not in self.hands[player_id]:
             return False
             
-        # Validate token available
-        if self.pool[token_animal] <= 0:
+        # Validate the figure choice. The rulebook requires taking one animal figure
+        # "provided an eligible figure remains" (Wildlife Safari / Botswana, "Game Play"):
+        # if NO figure of ANY species is left, the play is still legal and no figure is
+        # taken. Previously any empty pool rejected the whole turn, which deadlocked the
+        # round once all 25 figures had been claimed - see RULES-AUDIT.md D13.
+        if token_animal is not None and token_animal not in self.pool:
+            return False
+        take_token = token_animal is not None and self.pool[token_animal] > 0
+        if not take_token and any(count > 0 for count in self.pool.values()):
             return False
 
         # Apply play
         self.hands[player_id].remove(card)
         self.board[card_animal].append(card_value)
-        self.pool[token_animal] -= 1
-        self.player_tokens[player_id][token_animal] += 1
-        
+        if take_token and token_animal is not None:
+            self.pool[token_animal] -= 1
+            self.player_tokens[player_id][token_animal] += 1
+
         # Friendly display name for logs
         display_name = player_id.split('-')[0] if '-' in player_id else player_id
-        self.logs.append(f"{display_name} played {card_animal} {card_value} and took a {token_animal} token.")
+        if take_token:
+            self.logs.append(f"{display_name} played {card_animal} {card_value} and took a {token_animal} token.")
+        else:
+            self.logs.append(f"{display_name} played {card_animal} {card_value} (no animal figures left to take).")
 
         # Check for round end (6th card of any animal played)
         if len(self.board[card_animal]) == 6:

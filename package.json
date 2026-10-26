@@ -1,13 +1,15 @@
 {
   "name": "botswana-remote-check",
   "private": true,
+  "type": "module",
   "scripts": {
     "typecheck": "cd frontend && ./node_modules/.bin/tsc --noEmit",
+    "audit": "node scripts/independent-rules-check.ts",
     "deploy:verify": "node scripts/deploy-verify.mjs",
     "gate": "node scripts/gate.mjs",
     "gate:strict": "node scripts/gate.mjs --strict"
   },
   "gate": {
-    "floor": ["typecheck", "deploy:verify"]
+    "floor": ["typecheck", "audit", "deploy:verify"]
   }
 }

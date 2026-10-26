@@ -50,8 +50,9 @@ async def handle_bot_turn(room_id: str):
     # Simple bot AI: pick random card, pick random available token
     card_animal, card_value = random.choice(hand)
     available_tokens = [a for a, count in state.pool.items() if count > 0]
-    if not available_tokens: return
-    token_animal = random.choice(available_tokens)
+    # If no animal figures remain anywhere, the rulebook still allows the card play
+    # (no figure is taken) - see backend/game.py and RULES-AUDIT.md D13.
+    token_animal = random.choice(available_tokens) if available_tokens else None
 
     success = state.play_turn(current, card_animal, card_value, token_animal)
     if success:
